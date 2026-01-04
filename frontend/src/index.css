@@ -1,0 +1,12 @@
+@import url("https://fonts.googleapis.com/css2?family=Happy+Monkey&display=swap");
+
+:root {
+  --water-background: #4b495f;
+}
+body {
+  background-color: #1f1f2f;
+  color: white;
+  font-family: "Happy Monkey", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
