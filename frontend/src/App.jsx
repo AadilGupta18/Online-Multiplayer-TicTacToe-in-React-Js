@@ -4,6 +4,8 @@ import Square from "./Square/Square";
 import { io } from "socket.io-client";
 import Swal from "sweetalert2";
 
+const url = "https://online-multiplayer-tictactoe-in-react-js.onrender.com";
+
 const renderFrom = [
   [1, 2, 3],
   [4, 5, 6],
@@ -20,6 +22,7 @@ const App = () => {
   const [playerName, setPlayerName] = useState("");
   const [opponentName, setOpponentName] = useState(null);
   const [playingAs, setPlayingAs] = useState(null);
+  const [rematchRequested, setRematchRequested] = useState(false);
 
   const checkWinner = () => {
     // Row Dynamic
@@ -93,35 +96,74 @@ const App = () => {
     return result;
   };
 
-  socket?.on("opponentLeftMatch", () => {
-    console.log("Something happened");
-    setFinishedState("opponentLeftMatch");
-  });
-
-  socket?.on("playerMoveFromServer", (data) => {
-    const id = data.state.id;
-    setGameState((prevState) => {
-      let newState = [...prevState];
-      const rowIndex = Math.floor(id / 3);
-      const colIndex = id % 3;
-      newState[rowIndex][colIndex] = data.state.sign;
-      return newState;
+  const sendRematch = () => {
+    if (!socket) return;
+    socket.emit("rematchRequestFromPlayer", {
+      playingAs: playingAs,
     });
-    setCurrentPlayer(data.state.sign === "circle" ? "cross" : "circle");
-  });
+    setRematchRequested(true);
+  };
 
-  socket?.on("connect", () => {
-    setPlayOnline(true);
-  });
+  useEffect(() => {
+    if (!socket) return;
 
-  socket?.on("OpponentNotFound", () => {
-    setOpponentName(false);
-  });
+    const onRematch = (data) => {
+      setGameState(data.gameState);
+      setPlayingAs(data.playingAs);
+      // set currentPlayer to the starting player symbol provided by server
+      if (data.startingPlayer) {
+        setCurrentPlayer(data.startingPlayer);
+      } else {
+        // fallback for older server behavior
+        setCurrentPlayer(data.playingAs);
+      }
+      setFinishedState(false);
+      setFinishedArrayState([]);
+      // clear rematch requested indicator when rematch starts
+      setRematchRequested(false);
+    };
 
-  socket?.on("OpponentFound", (data) => {
-    setPlayingAs(data.playingAs);
-    setOpponentName(data.opponentName);
-  });
+    const onOpponentLeft = () => {
+      setFinishedState("opponentLeftMatch");
+    };
+
+    const onPlayerMove = (data) => {
+      const id = data.state.id;
+      setGameState((prevState) => {
+        let newState = [...prevState];
+        const rowIndex = Math.floor(id / 3);
+        const colIndex = id % 3;
+        newState[rowIndex][colIndex] = data.state.sign;
+        return newState;
+      });
+      setCurrentPlayer(data.state.sign === "circle" ? "cross" : "circle");
+    };
+
+    const onConnect = () => setPlayOnline(true);
+
+    const onOpponentNotFound = () => setOpponentName(false);
+
+    const onOpponentFound = (data) => {
+      setPlayingAs(data.playingAs);
+      setOpponentName(data.opponentName);
+    };
+
+    socket.on("rematchOrderFromServer", onRematch);
+    socket.on("opponentLeftMatch", onOpponentLeft);
+    socket.on("playerMoveFromServer", onPlayerMove);
+    socket.on("connect", onConnect);
+    socket.on("OpponentNotFound", onOpponentNotFound);
+    socket.on("OpponentFound", onOpponentFound);
+
+    return () => {
+      socket.off("rematchOrderFromServer", onRematch);
+      socket.off("opponentLeftMatch", onOpponentLeft);
+      socket.off("playerMoveFromServer", onPlayerMove);
+      socket.off("connect", onConnect);
+      socket.off("OpponentNotFound", onOpponentNotFound);
+      socket.off("OpponentFound", onOpponentFound);
+    };
+  }, [socket]);
 
   async function playOnlineClick() {
     const result = await takePlayerName();
@@ -133,7 +175,7 @@ const App = () => {
     const username = result.value;
     setPlayerName(username);
 
-    const newSocket = io("http://localhost:3000", {
+    const newSocket = io(url, {
       autoConnect: true,
     });
 
@@ -162,10 +204,6 @@ const App = () => {
     );
   }
 
-  {
-    console.log(currentPlayer);
-    console.log(playingAs);
-  }
   return (
     <div className="main-div">
       <div className="move-detection">
@@ -222,6 +260,19 @@ const App = () => {
         finishedState === "draw" && (
           <h3 className="finished-state">Match is Draw</h3>
         )}
+
+      {finishedState &&
+        finishedState !== "opponentLeftMatch" &&
+        finishedState !== "draw" && (
+          <button
+            className={"rematch-btn " + (rematchRequested ? "requesting" : "")}
+            onClick={sendRematch}
+            disabled={rematchRequested}
+          >
+            {rematchRequested ? "rematch request sent" : "Rematch"}
+          </button>
+        )}
+
       {!finishedState && opponentName && (
         <h3 className="finished-state">
           You are playing against {opponentName}

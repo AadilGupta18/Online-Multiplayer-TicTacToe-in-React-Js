@@ -98,3 +98,41 @@
 .grey-background {
   background-color: grey !important;
 }
+
+.rematch-btn {
+  padding: 15px 100px;
+  font-size: 17px;
+  box-sizing: border-box;
+  cursor: pointer;
+  background-color: var(--water-background);
+  color: white;
+  border: none;
+  outline: none;
+  border-radius: 5px;
+}
+
+/* rematch request animation */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.rematch-btn.requesting {
+  animation: pulse 1.2s ease-in-out infinite;
+  cursor: default;
+  opacity: 0.9;
+}
+
+.rematch-btn.requesting:disabled {
+  cursor: default;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Square.css";
 
 const circleSvg = (
@@ -57,6 +57,13 @@ const Square = ({
 }) => {
   const [icon, setIcon] = useState(null);
 
+  useEffect(() => {
+    // clear local icon when the parent resets the board to numbers
+    if (typeof currentElement !== "string") {
+      setIcon(null);
+    }
+  }, [currentElement]);
+
   const clickOnSquare = () => {
     if (playingAs !== currentPlayer) {
       return;
@@ -65,6 +72,9 @@ const Square = ({
     if (finishedState) {
       return;
     }
+
+    // prevent clicking an already-occupied tile
+    if (typeof currentElement === "string") return;
 
     if (!icon) {
       if (currentPlayer === "circle") {
